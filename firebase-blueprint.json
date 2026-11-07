@@ -1,0 +1,129 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile & Role",
+      "description": "Menyimpan data pengguna terautentikasi dan peran akses kafe (pemilik atau kasir)",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "format": "email", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "role": { "type": "string", "enum": ["pemilik", "kasir"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email", "name", "role", "createdAt"]
+    },
+    "MenuItem": {
+      "title": "Menu Kafe",
+      "description": "Data menu makanan dan minuman kafe beserta harga jual dan HPP",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 100 },
+        "category": { "type": "string", "enum": ["Kopi", "Non-Kopi", "Makanan Berat", "Camilan", "Minuman Segar"] },
+        "price": { "type": "number" },
+        "costPrice": { "type": "number" },
+        "description": { "type": "string", "maxLength": 500 },
+        "isAvailable": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "category", "price", "isAvailable"]
+    },
+    "Ingredient": {
+      "title": "Bahan Baku & Stok",
+      "description": "Data stok bahan awal, tambahan restock, terpakai, dan sisa bahan",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 100 },
+        "unit": { "type": "string", "maxLength": 20 },
+        "initialStock": { "type": "number" },
+        "addedStock": { "type": "number" },
+        "usedStock": { "type": "number" },
+        "currentStock": { "type": "number" },
+        "minStockAlert": { "type": "number" },
+        "costPerUnit": { "type": "number" }
+      },
+      "required": ["id", "name", "unit", "initialStock", "currentStock", "minStockAlert"]
+    },
+    "Order": {
+      "title": "Pesanan & Transaksi Kasir",
+      "description": "Data transaksi pesanan pelanggan, rincian menu, pembayaran, dan kasir penanggung jawab",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "orderNumber": { "type": "string", "maxLength": 32 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "customerName": { "type": "string", "maxLength": 100 },
+        "tableNumber": { "type": "string", "maxLength": 30 },
+        "orderType": { "type": "string", "enum": ["Dine-In", "Takeaway"] },
+        "subtotal": { "type": "number" },
+        "discount": { "type": "number" },
+        "total": { "type": "number" },
+        "totalCostPrice": { "type": "number" },
+        "paymentMethod": { "type": "string", "enum": ["TUNAI", "QRIS", "TRANSFER", "DEBIT"] },
+        "amountPaid": { "type": "number" },
+        "change": { "type": "number" },
+        "cashierName": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "enum": ["Selesai", "Dibatalkan"] }
+      },
+      "required": ["id", "orderNumber", "createdAt", "orderType", "subtotal", "total", "paymentMethod", "amountPaid", "cashierName", "status"]
+    },
+    "Expense": {
+      "title": "Pengeluaran Operasional",
+      "description": "Catatan pengeluaran beban kafe oleh pemilik",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "date": { "type": "string", "maxLength": 15 },
+        "category": { "type": "string", "maxLength": 50 },
+        "description": { "type": "string", "maxLength": 255 },
+        "amount": { "type": "number" },
+        "recordedBy": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "date", "category", "description", "amount", "recordedBy"]
+    },
+    "Note": {
+      "title": "Catatan & SOP Tim",
+      "description": "Catatan pengumuman dari pemilik untuk dibaca kasir dan staf",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "title": { "type": "string", "maxLength": 150 },
+        "content": { "type": "string", "maxLength": 2000 },
+        "tag": { "type": "string", "enum": ["Penting", "SOP", "Promo", "Umum"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "author": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "title", "content", "tag", "createdAt", "updatedAt", "author"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Profil pengguna dan peran otorisasi kafe"
+    },
+    "/menu/{menuId}": {
+      "schema": { "$ref": "#/entities/MenuItem" },
+      "description": "Daftar menu makanan dan minuman"
+    },
+    "/ingredients/{ingredientId}": {
+      "schema": { "$ref": "#/entities/Ingredient" },
+      "description": "Pencatatan stok bahan baku"
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Transaksi kasir dan pesanan"
+    },
+    "/expenses/{expenseId}": {
+      "schema": { "$ref": "#/entities/Expense" },
+      "description": "Biaya operasional kafe"
+    },
+    "/notes/{noteId}": {
+      "schema": { "$ref": "#/entities/Note" },
+      "description": "Papan pengumuman untuk karyawan"
+    }
+  }
+}

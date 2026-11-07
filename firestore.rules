@@ -1,0 +1,115 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global Default-Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Connection testing endpoint
+    match /test/{docId} {
+      allow read: if true;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isBootstrappedAdmin() {
+      return isSignedIn() && request.auth.token.email == 'epipaniasg@gmail.com';
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner() {
+      return isBootstrappedAdmin() || (
+        isSignedIn() && (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'pemilik'
+        )
+      );
+    }
+
+    function isCashier() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'kasir'
+      );
+    }
+
+    function isStaff() {
+      return isOwner() || isCashier();
+    }
+
+    // Users Collection (Profile and role mapping)
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isOwner());
+      allow list: if isOwner();
+      allow create, update: if isOwner() || (
+        isSignedIn() && request.auth.uid == userId && (
+          isBootstrappedAdmin() || incoming().role == 'kasir'
+        )
+      );
+      allow delete: if isOwner();
+    }
+
+    // Employees Collection (Managed by Pemilik, readable by staff/app)
+    match /employees/{employeeId} {
+      allow read: if true;
+      allow write: if isOwner() && isValidId(employeeId);
+    }
+
+    // Settings Collection (Cafe store profile & receipt info)
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    // Menu Collection (Publicly readable menu, writable only by Pemilik)
+    match /menu/{menuId} {
+      allow read: if true;
+      allow create, update, delete: if isOwner() && isValidId(menuId);
+    }
+
+    // Ingredients Collection (Readable by staff, stock deduction on orders, master data only by Pemilik)
+    match /ingredients/{ingredientId} {
+      allow read: if true;
+      allow create, delete: if isOwner() && isValidId(ingredientId);
+      allow update: if isValidId(ingredientId);
+    }
+
+    // Orders Collection (Created by Cashier/Admin, read by staff, managed by Pemilik)
+    match /orders/{orderId} {
+      allow read, create: if isValidId(orderId);
+      allow update, delete: if isOwner() && isValidId(orderId);
+    }
+
+    // Expenses Collection (CONFIDENTIAL: strictly for Pemilik only - Laporan keuntungan hanya Pemilik)
+    match /expenses/{expenseId} {
+      allow read, write: if isOwner() && isValidId(expenseId);
+    }
+
+    // Notes Collection (Catatan Pemilik dibaca oleh Admin/Kasir)
+    match /notes/{noteId} {
+      allow read: if true;
+      allow create, delete: if isOwner() && isValidId(noteId);
+      allow update: if isValidId(noteId) && (
+        isOwner() ||
+        incoming().diff(existing()).affectedKeys().hasOnly(['readBy', 'updatedAt'])
+      );
+    }
+  }
+}
